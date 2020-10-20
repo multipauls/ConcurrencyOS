@@ -21,7 +21,7 @@ struct Student{
 	int name;
 	int numVac;
 	int done;	
-}students[100];
+}students[200];
 
 
 struct Vacc{
@@ -299,7 +299,7 @@ void *vacFunc(){
 
 
 int main(){
-	pthread_t stid[100];
+	pthread_t stid[200];
 	pthread_t vacid[100];
 	pthread_t compid[100];
 	//pthread_t checkExit;

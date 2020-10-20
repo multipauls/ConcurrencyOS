@@ -13,8 +13,7 @@
 #include <inttypes.h>
 #include <math.h>
 
-void selSort(int arr[], int l, int r)  
-{  
+void selSort(int arr[], int l, int r){  
     int i, j, min_idx;  
   
     for (i = l; i <=r; i++)  
@@ -37,8 +36,7 @@ int * shareMem(size_t size){
      return (int*)shmat(shm_id, NULL, 0);
 }
 
-void merge(int arr[], int l, int m, int r) 
-{ 
+void merge(int arr[], int l, int m, int r){ 
     int i, j, k; 
     int n1 = m - l + 1; 
     int n2 = r - m; 
@@ -82,8 +80,7 @@ void merge(int arr[], int l, int m, int r)
 
 
 
-void conMergeSort(int arr[], int l, int r) 
-{ 
+void conMergeSort(int arr[], int l, int r){ 
     if (l < r) { 
         
         int m = l + (r - l) / 2; 
@@ -93,10 +90,10 @@ void conMergeSort(int arr[], int l, int r)
                exit(1);
              }
              if (lpid==0){
-               //if(m-l>5)
+                if(m-l>5)
                        conMergeSort(arr, l, m);
-                  //else
-                  //     selSort(arr, l, m);
+                else
+                       selSort(arr, l, m);
                   exit(0);
                }
                else{
@@ -106,10 +103,10 @@ void conMergeSort(int arr[], int l, int r)
                          exit(1);
                     }
                     if (rpid==0){
-                    //   if (r-m-1>5)
+                        if (r-m-1>5)
                          conMergeSort(arr, m + 1, r);
-                   //    else
-                   //         selSort(arr, m + 1, r);
+                        else
+                            selSort(arr, m + 1, r);
                     exit(0);
                    }
                    else{
@@ -134,13 +131,17 @@ void conMergeSort(int arr[], int l, int r)
     } 
 } 
 
-void mergeSort(int arr[], int l, int r)  
-{  
-    if (l < r) {  
-        int m = l + (r - l) / 2;  
-        mergeSort(arr, l, m);  
-        mergeSort(arr, m + 1, r);  
-  
+void mergeSort(int arr[], int l, int r){  
+    if (l < r){  
+        int m = l + (r - l) / 2;
+        if(m-l>5)  
+        	mergeSort(arr, l, m); 
+        else 
+        	selSort(arr, l, m);
+        if (r-m-1>5)
+        	mergeSort(arr, m + 1, r);  
+  		else 
+  			selSort(arr, m + 1, r);
         merge(arr, l, m, r);  
     }  
 }  
@@ -191,7 +192,7 @@ void runSorts(long long int n){
 
      
 
-     printf("normal_quicksort ran:\n\t[ %Lf ] times faster than concurrent_quicksort\n\t", t1/t2);
+     printf("normal mergesort ran:\n\t[ %Lf ] times faster than concurrent mergsort\n\t", t1/t2);
      shmdt(arr);
      return;
 }
