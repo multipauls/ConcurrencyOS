@@ -9,9 +9,11 @@
 #include <errno.h>
 #include<time.h>
 int muscount=0;
-int acctr=5, elctr=5, coordctr=5, musctr=10;
+int acctr, elctr, coordctr, musctr;
 int elearr[100][2], acarr[100][2];
 char info[100][2][20];
+int delaylist[100];
+int t1=5, t2=10, t=5;
 pthread_mutex_t musmutex, acmutex, elmutex;
 sem_t acoustic, electric, coord;
 struct Musician{
@@ -30,107 +32,158 @@ void waitAcous(int i, int sing){
         printf("Clock error\n");
         return;
     }
-   	ts.tv_sec += 5;
-   	
-	int s = sem_timedwait(&acoustic, &ts);
+   	ts.tv_sec += t;
+   	int singerval=0;
+   	if (sing==1){
+   		for(int k=0; k<acctr && musics[i].stage==0; k++){
+   			if(acarr[k][1]==0&& acarr[k][0]!=-1){
+   				pthread_mutex_lock(&musics[i].mutex);
+   				pthread_mutex_lock(&acmutex);
+   				acarr[k][1]=1;
+   				musics[i].stage=1;
+   				singerval=1;
+   				pthread_mutex_unlock(&acmutex);
+   				pthread_mutex_unlock(&musics[i].mutex);
+   				printf("%s joined as singer on acoustic stage %d\n", musics[i].name, k);
+   				sleep(2);
+   				printf("%s finished singing on acoustic stage %d\n", musics[i].name, k);
+   				break;
 
-	if(musics[i].stage==1){
-		sem_post(&acoustic);
-		return;
-	}
-	else if (s==-1 && errno == ETIMEDOUT){
-		printf("%s got tired of waiting\n", musics[i].name);
-		return;
-	}
-	else{
-		pthread_mutex_lock(&musics[i].mutex);
-		musics[i].stage=1;
-		pthread_mutex_unlock(&musics[i].mutex);
-		pthread_mutex_lock(&acmutex);
-		int j=0;
-		for (j=0; j<acctr; j++){
-			if(acarr[j][0]==-1){
-				acarr[j][0]=i;
-				//musics[i].stageno=j;
-				break;	
+   			}
+   		}
+   		
+   	}
+
+	if (singerval==0){
+		int s = sem_timedwait(&acoustic, &ts);
+		if (s==-1 && errno == ETIMEDOUT){
+			printf("%s got tired of waiting\n", musics[i].name);
+			return;
+		if(musics[i].stage==1){
+			sem_post(&acoustic);
+			return;
+		}
+		
+		}
+		else{
+			pthread_mutex_lock(&musics[i].mutex);
+			musics[i].stage=1;
+			
+			pthread_mutex_lock(&acmutex);
+			int j=0;
+			for (j=0; j<acctr; j++){
+				if(acarr[j][0]==-1){
+					acarr[j][0]=i;
+					//musics[i].stageno=j;
+					break;	
+				}
 			}
+			//printf("Acoustic ");
+			//for (int j=0; j<acctr; j++){
+			//	printf("%d ",acarr[j] );
+			//}
+			
+			pthread_mutex_unlock(&acmutex);
+			//printf("\n");
+			printf("%s joins acoustic stage %d\n",musics[i].name,j );
+			
+			//printf("%s entered acoustic stage\n", musics[i].name);
+			int stdelay = (rand()%(t2-t1))+t1;
+			sleep(stdelay);
+			if(acarr[j][1]==1){
+				printf("%s performance extended by singer\n",musics[i].name );
+				sleep(2);
+			}
+			pthread_mutex_unlock(&musics[i].mutex);
+			printf("%s %s played for %dsecs on acoustic stage %d, leaving\n", musics[i].name, musics[i].instr, stdelay, j);
+			pthread_mutex_lock(&acmutex);
+			acarr[j][0]=-1;
+			pthread_mutex_unlock(&acmutex);
+			sem_post(&acoustic);
+			
 		}
-		//printf("Acoustic ");
-		//for (int j=0; j<acctr; j++){
-		//	printf("%d ",acarr[j] );
-		//}
-		
-		pthread_mutex_unlock(&acmutex);
-		//printf("\n");
-		printf("%s joins acoustic stage %d\n",musics[i].name,j );
-		
-		//printf("%s entered acoustic stage\n", musics[i].name);
-		int stdelay = rand()%6;
-		sleep(stdelay);
-		if(acarr[j][1]==1){
-			printf("%s performance extended by singer\n",musics[i].name );
-			sleep(2);
-		}
-		printf("%s %s played for %dsecs on acoustic, leaving\n", musics[i].name, musics[i].instr, stdelay);
-		acarr[j][0]=-1;
-		sem_post(&acoustic);
-		
 	}
 	return;
 }
 
 void waitElec(int i, int sing){
+
 	struct timespec ts;
 	
 	if (clock_gettime(CLOCK_REALTIME, &ts) == -1){
         printf("Clock error\n");
         return;
 	}
-   	ts.tv_sec += 5;
-	int s = sem_timedwait(&electric, &ts);
+   	ts.tv_sec += t;
+   	int singerval=0;
+   	if (sing==1){
+   		for(int k=0; k<elctr && musics[i].stage==0; k++){
+   			if(elearr[k][1]==0 && elearr[k][0]!=-1){
+   				pthread_mutex_lock(&elmutex);
+   				elearr[k][1]=1;
+   				singerval=1;
+   				pthread_mutex_lock(&musics[i].mutex);
+   				musics[i].stage=1;
+   				pthread_mutex_unlock(&musics[i].mutex);
+   				pthread_mutex_unlock(&elmutex);
+   				printf("%s joined as singer on electric stage %d\n", musics[i].name, k);
+   				sleep(2);
+   				printf("%s finished singing on electric stage %d\n", musics[i].name, k);
+   				break;
+   			}
+   		}
+   		
+   	}
+   	if(singerval==0){
 
-	if(musics[i].stage==1){
-		sem_post(&electric);
-		return;
-	}
-	else if (s==-1 && errno == ETIMEDOUT){
-		printf("%s got tired of waiting\n", musics[i].name);
-		return;
-	}
-	else{
-		pthread_mutex_lock(&musics[i].mutex);
-		musics[i].stage=1;
-		pthread_mutex_unlock(&musics[i].mutex);
-		pthread_mutex_lock(&elmutex);
-		int j=0;
-		for (j=0; j<elctr; j++){
-			if(elearr[j][0]==-1){
-				elearr[j][0]=i;
-				//musics[i].stageno=j;
-				break;	
+		int s = sem_timedwait(&electric, &ts);
+		if (s==-1 && errno == ETIMEDOUT){
+			printf("%s got tired of waiting\n", musics[i].name);
+			return;
+		if(musics[i].stage==1){
+			sem_post(&electric);
+			return;
+		}
+		 
+		}
+		else{
+			pthread_mutex_lock(&musics[i].mutex);
+			musics[i].stage=1;
+			
+			pthread_mutex_lock(&elmutex);
+			int j=0;
+			for (j=0; j<elctr; j++){
+				if(elearr[j][0]==-1){
+					elearr[j][0]=i;
+					//musics[i].stageno=j;
+					break;	
+				}
 			}
+			//printf("Electric ");
+			
+			//for (int j=0; j<elctr; j++){
+			//	printf("%d ",elearr[j] );
+			//}
+			pthread_mutex_unlock(&elmutex);
+			//printf("\n");
+			printf("%s joins electric stage %d\n",musics[i].name,j );
+			//printf("%s entered electric stage\n", musics[i].name);
+			int stdelay = (rand()%(t2-t1))+t1;
+			sleep(stdelay);
+			if(elearr[j][1]==1){
+				printf("%s performance extended by singer\n",musics[i].name );
+				sleep(2);
+			}
+			pthread_mutex_unlock(&musics[i].mutex);
+			printf("%s %s played for %dsecs on electric stage %d, leaving\n",  musics[i].name, musics[i].instr, stdelay, j);
+			pthread_mutex_lock(&elmutex);
+			elearr[j][0]=-1;
+			pthread_mutex_unlock(&elmutex);
+			sem_post(&electric);
+			
 		}
-		//printf("Electric ");
-		
-		//for (int j=0; j<elctr; j++){
-		//	printf("%d ",elearr[j] );
-		//}
-		pthread_mutex_unlock(&elmutex);
-		//printf("\n");
-		printf("%s joins electric stage %d\n",musics[i].name,j );
-		//printf("%s entered electric stage\n", musics[i].name);
-		int stdelay = rand()%6;
-		sleep(stdelay);
-		if(elearr[j][1]==1){
-			printf("%s performance extended by singer\n",musics[i].name );
-			sleep(2);
-		}
-		printf("%s %s played for %dsecs on electric, leaving\n",  musics[i].name, musics[i].instr, stdelay);
-		elearr[j][0]=-1;
-		sem_post(&electric);
-		
+		return;
 	}
-	return;
 }
 
 void waitShirt(int i){
@@ -143,29 +196,29 @@ void waitShirt(int i){
 }
 
 void * waitAcousFn(void * i){
-	waitAcous(*((int *) i), 1);
-	pthread_exit(NULL);
-
-}
-
-void * waitElecFn(void * i){
-	waitElec(*((int *) i), 1);
-	pthread_exit(NULL);
-}
-
-//waitSinger(int i)
-void * waitAcousSingerFn(void * i){
 	waitAcous(*((int *) i), 0);
 	pthread_exit(NULL);
 
 }
 
-void * waitElecSingerFn(void * i){
+void * waitElecFn(void * i){
 	waitElec(*((int *) i), 0);
 	pthread_exit(NULL);
 }
 
-void * musFunc(void * input){
+//waitSinger(int i)
+void * waitAcousSingerFn(void * i){
+	waitAcous(*((int *) i), 1);
+	pthread_exit(NULL);
+
+}
+
+void * waitElecSingerFn(void * i){
+	waitElec(*((int *) i), 1);
+	pthread_exit(NULL);
+}
+
+void * musFunc(){
 pthread_mutex_lock(&musmutex);
 int i=muscount;
 muscount++;
@@ -173,7 +226,8 @@ pthread_mutex_unlock(&musmutex);
 pthread_mutex_init(&musics[i].mutex, NULL);
 
 pthread_mutex_lock(&musics[i].mutex);
-int delay = rand()%6;
+//int delay = rand()%6;
+int delay = delaylist[i];
 musics[i].delay=delay;
 musics[i].stage=0;
 //musics[i].stageno=-1;
@@ -224,6 +278,17 @@ pthread_exit(NULL);
 int main(){
 srand(time(0));
 pthread_t musid[100];
+scanf("%d", &musctr);
+scanf("%d", &acctr);
+scanf("%d", &elctr);
+scanf("%d", &coordctr);
+scanf("%d", &t1);
+scanf("%d", &t2);
+scanf("%d", &t);
+if (acctr==0 || electr==0){
+	printf("Not enoug stages\n");
+	return;
+}
 sem_init(&acoustic, 0, acctr);
 sem_init(&electric, 0, elctr);
 sem_init(&coord, 0, coordctr);
@@ -231,6 +296,10 @@ pthread_mutex_init(&musmutex, NULL);
 pthread_mutex_init(&acmutex, NULL);
 pthread_mutex_init(&elmutex, NULL);
 
+for (int i=0; i<musctr; i++){
+	scanf("%s %s %d", info[i][0], info[i][1], &delaylist[i]);
+}
+/*
 strcpy(info[0][0],"Tanvi");
 strcpy(info[0][1],"v");
 strcpy(info[1][0],"Tanvi2");
@@ -251,6 +320,16 @@ strcpy(info[8][0],"Tanvi9");
 strcpy(info[8][1],"g");
 strcpy(info[9][0],"Tanvi10");
 strcpy(info[9][1],"g");
+strcpy(info[10][0],"Tanvi11");
+strcpy(info[10][1],"s");
+strcpy(info[11][0],"Tanvi12");
+strcpy(info[11][1],"s");
+strcpy(info[12][0],"Tanvi13");
+strcpy(info[12][1],"s");
+strcpy(info[13][0],"Tanvi14");
+strcpy(info[13][1],"s");
+strcpy(info[14][0],"Tanvi15");
+strcpy(info[14][1],"s");*/
 //for (int i=0; i<5; i++){
 
 	//scanf("%s", info[i][0]);
